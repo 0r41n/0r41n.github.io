@@ -1,23 +1,32 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ArrowDown,
   ArrowUp,
   ArrowUpRight,
   BookOpen,
+  CloudRain,
+  Command,
   Github,
   Menu,
   Pause,
   Play,
   ShieldCheck,
   X,
+  Zap,
 } from 'lucide-react'
 import TaiChiCanvas from './components/TaiChiCanvas'
 import Terminal from './components/Terminal'
+import DataRain from './components/DataRain'
+import FiveElements from './components/FiveElements'
+import CryptoLab from './components/CryptoLab'
+import Thunder404 from './components/Thunder404'
 import { labs, resources, tools } from './data/content'
 
 const navItems = [
   { label: '修行录', href: '#labs' },
+  { label: '五行阵', href: '#elements' },
   { label: '八门谱', href: '#tools' },
+  { label: '玄算器', href: '#codec' },
   { label: '三将心诀', href: '#principles' },
   { label: '藏经阁', href: '#resources' },
 ]
@@ -29,9 +38,27 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [mode, setMode] = useState<'yin' | 'yang'>('yang')
   const [paused, setPaused] = useState(false)
+  const [rainEnabled, setRainEnabled] = useState(true)
+  const [thunderOpen, setThunderOpen] = useState(false)
+  const [toast, setToast] = useState('')
   const [activeLab, setActiveLab] = useState(labs[0].id)
   const [toolFilter, setToolFilter] = useState<ToolFilter>('全部')
   const [scrollProgress, setScrollProgress] = useState(0)
+  const toastTimer = useRef<number | undefined>(undefined)
+
+  const notify = useCallback((message: string) => {
+    setToast(message)
+    window.clearTimeout(toastTimer.current)
+    toastTimer.current = window.setTimeout(() => setToast(''), 2400)
+  }, [])
+
+  const closeThunder = useCallback(() => setThunderOpen(false), [])
+  const navigateTo = useCallback((id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    if (id === 'terminal') window.setTimeout(() => document.getElementById('terminal-command')?.focus(), 450)
+  }, [])
+
+  useEffect(() => () => window.clearTimeout(toastTimer.current), [])
 
   useEffect(() => {
     let ticking = false
@@ -56,18 +83,23 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    const closeOnEscape = (event: KeyboardEvent) => {
+    const onKeyboard = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setMenuOpen(false)
+      if (event.key.toLowerCase() === 'k' && event.ctrlKey) {
+        event.preventDefault()
+        navigateTo('terminal')
+      }
     }
-    window.addEventListener('keydown', closeOnEscape)
-    return () => window.removeEventListener('keydown', closeOnEscape)
-  }, [])
+    window.addEventListener('keydown', onKeyboard)
+    return () => window.removeEventListener('keydown', onKeyboard)
+  }, [navigateTo])
 
   const selectedLab = labs.find((lab) => lab.id === activeLab) ?? labs[0]
   const visibleTools = toolFilter === '全部' ? tools : tools.filter((tool) => tool.category === toolFilter)
 
   return (
-    <div className="site-shell" id="top">
+    <div className="site-shell" id="top" data-mode={mode}>
+      <DataRain active={rainEnabled} mode={mode} />
       <div className="scroll-progress" aria-hidden="true">
         <span style={{ transform: `scaleX(${scrollProgress})` }} />
       </div>
@@ -87,41 +119,23 @@ export default function App() {
           ))}
         </nav>
 
-        <a
-          className="github-link desktop-github"
-          href="https://github.com/0r41n"
-          target="_blank"
-          rel="noreferrer"
-          aria-label="访问 GitHub 账号 0r41n"
-        >
-          <Github size={18} aria-hidden="true" />
-          <span>@0r41n</span>
-          <ArrowUpRight size={15} aria-hidden="true" />
-        </a>
+        <div className="header-actions">
+          <button className="command-trigger" type="button" onClick={() => navigateTo('terminal')} aria-label="聚焦交互终端，快捷键 Control K">
+            <Command size={16} aria-hidden="true" /><span>Ctrl K</span>
+          </button>
+          <a className="github-link desktop-github" href="https://github.com/0r41n" target="_blank" rel="noreferrer" aria-label="访问 GitHub 账号 0r41n">
+            <Github size={18} aria-hidden="true" /><span>@0r41n</span><ArrowUpRight size={15} aria-hidden="true" />
+          </a>
+          <button className="menu-toggle" type="button" aria-label={menuOpen ? '关闭导航菜单' : '打开导航菜单'} aria-expanded={menuOpen} aria-controls="mobile-navigation" onClick={() => setMenuOpen((open) => !open)}>
+            {menuOpen ? <X size={22} aria-hidden="true" /> : <Menu size={22} aria-hidden="true" />}
+          </button>
+        </div>
 
-        <button
-          className="menu-toggle"
-          type="button"
-          aria-label={menuOpen ? '关闭导航菜单' : '打开导航菜单'}
-          aria-expanded={menuOpen}
-          aria-controls="mobile-navigation"
-          onClick={() => setMenuOpen((open) => !open)}
-        >
-          {menuOpen ? <X size={22} aria-hidden="true" /> : <Menu size={22} aria-hidden="true" />}
-        </button>
-
-        <nav
-          id="mobile-navigation"
-          className={`mobile-nav ${menuOpen ? 'is-open' : ''}`}
-          aria-label="移动端导航"
-          aria-hidden={!menuOpen}
-        >
+        <nav id="mobile-navigation" className={`mobile-nav ${menuOpen ? 'is-open' : ''}`} aria-label="移动端导航" aria-hidden={!menuOpen}>
           {navItems.map((item) => (
             <a key={item.href} href={item.href} onClick={() => setMenuOpen(false)}>{item.label}</a>
           ))}
-          <a href="https://github.com/0r41n" target="_blank" rel="noreferrer" onClick={() => setMenuOpen(false)}>
-            <Github size={18} aria-hidden="true" /> GitHub
-          </a>
+          <a href="https://github.com/0r41n" target="_blank" rel="noreferrer" onClick={() => setMenuOpen(false)}><Github size={18} aria-hidden="true" /> GitHub</a>
         </nav>
       </header>
 
@@ -192,6 +206,17 @@ export default function App() {
             <span>不堆砌工具，不神化漏洞。</span>
             <span>理解原理，验证假设，记录遗漏，思考防御。</span>
           </div>
+        </section>
+
+        <section className="elements-section section-frame" id="elements" aria-labelledby="elements-title">
+          <div className="section-heading">
+            <div>
+              <span className="section-kicker">FIVE PHASES / 五行攻防数据流</span>
+              <h2 id="elements-title">五行阵</h2>
+            </div>
+            <p>金木水火土不是装饰标签，而是五种安全判断：收敛、扩展、流动、验证与恢复。选择阵眼，推演一条从攻击理解到防御复盘的链路。</p>
+          </div>
+          <FiveElements />
         </section>
 
         <section className="labs-section section-frame" id="labs" aria-labelledby="labs-title">
@@ -267,7 +292,7 @@ export default function App() {
             <p>一个无需后端的安全终端。试试 <code>whoami</code>、<code>skills</code> 或 <code>labs</code>，用另一种方式浏览这个站点。</p>
             <p className="terminal-ethics">终端只解析预设文本，不访问你的系统，不发起扫描，也不执行任何安全工具。</p>
           </div>
-          <Terminal />
+          <Terminal rainEnabled={rainEnabled} onRainChange={setRainEnabled} onModeChange={setMode} onThunder={() => setThunderOpen(true)} onNavigate={navigateTo} onNotify={notify} />
         </section>
 
         <section className="tools-section section-frame" id="tools" aria-labelledby="tools-title">
@@ -312,6 +337,17 @@ export default function App() {
             ))}
           </div>
           <p className="tool-disclaimer">示例命令使用占位目标，仅用于说明笔记中的工具场景。请仅在明确授权的环境中替换并执行。</p>
+        </section>
+
+        <section className="codec-section section-frame" id="codec" aria-labelledby="codec-title">
+          <div className="section-heading">
+            <div>
+              <span className="section-kicker">LOCAL CIPHER / 浏览器本地计算</span>
+              <h2 id="codec-title">玄算器</h2>
+            </div>
+            <p>一个真实可用的前端小工具：处理 Base64、URL 编码与 SHA-256 摘要。输入不会上传，结果可以复制或送回输入区连续计算。</p>
+          </div>
+          <CryptoLab onNotify={notify} />
         </section>
 
         <section className="principles-section section-frame" id="principles" aria-labelledby="principles-title">
@@ -389,6 +425,16 @@ export default function App() {
         <p>所有安全测试仅用于明确授权的学习与研究环境。</p>
         <a href="#top" aria-label="返回页面顶部">返回顶部 <ArrowUp size={16} aria-hidden="true" /></a>
       </footer>
+
+      <div className="effect-dock" aria-label="视觉特效控制">
+        <button type="button" className={rainEnabled ? 'active' : ''} aria-pressed={rainEnabled} onClick={() => {
+          setRainEnabled((value) => !value)
+          notify(rainEnabled ? '数据流已静止' : '数据流已恢复')
+        }} title="开启或关闭五行八卦数据流"><CloudRain size={18} aria-hidden="true" /><span>数据流</span></button>
+        <button type="button" onClick={() => setThunderOpen(true)} title="触发 404 天雷"><Zap size={18} aria-hidden="true" /><span>404 天雷</span></button>
+      </div>
+      <div className={`site-toast ${toast ? 'is-visible' : ''}`} role="status" aria-live="polite">{toast}</div>
+      <Thunder404 open={thunderOpen} onClose={closeThunder} />
     </div>
   )
 }
